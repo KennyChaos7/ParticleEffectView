@@ -1,11 +1,12 @@
 package com.example.particleeffect
 
 data class ParticlePoint(
-        var pos: FloatArray,
-        val centerPos: FloatArray,
-        val minDistance: Double,
-        val maxDistance: Double,
-        var speed: Float,
+        var x: Float,
+        var y: Float,
+        var distance: Float,
         var state: Int,
-        val quadrant: Int
+        val angle: Double,
+        val maxDistance: Float,
+        val centerX: Float,
+        val centerY: Float
 )
