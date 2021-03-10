@@ -4,106 +4,94 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
-import android.util.Log
 import android.view.View
 import android.view.animation.LinearInterpolator
 import java.util.*
-import kotlin.math.abs
-import kotlin.math.pow
-import kotlin.math.sqrt
+import kotlin.math.acos
+import kotlin.math.cos
+import kotlin.math.sin
 
 class ParticleEffectView @JvmOverloads constructor(
         context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    private val pointCount = 500
+    private var radius: Float = 0f
+    private val pointCount = 200
     private var pointPaint: Paint = Paint()
     private val ppList: MutableList<ParticlePoint> = mutableListOf()
     private var anim: ValueAnimator
     private val insideCirclePath = Path()
-    private val outsideCirclePath = Path()
 
     init {
         pointPaint.color = Color.WHITE
         pointPaint.strokeWidth = 2f
 
         anim = ValueAnimator.ofFloat(0f, 1f)
-        anim.duration = 5000
+        anim.duration = 10000
         anim.repeatCount = -1
         anim.interpolator = LinearInterpolator()
         anim.addUpdateListener { va ->
             if (va.animatedValue != 0) {
                 ppList.forEach {
                     val speedRandom = Random().nextInt(15).toFloat()
-                    it.speed = speedRandom
-
-                    it.pos = calcPos(it.pos, it.speed, it.quadrant, it.state)
-                    it.state = checkState(it.pos, it.centerPos,it.minDistance, it.maxDistance)
-
+                    //  是否需要反向移动
+                    //  TODO 使用撞壁回弹模式 it.state
+                    if (it.distance > it.maxDistance)
+                    {
+                        it.distance = 0f
+                    }
+                    //  核心算法来自https://mp.weixin.qq.com/s/p2nGt1g1doT1O8NwRqRW_Q
+                    //  原算法需要分成四个象限来分别处理,过于繁琐
+                    it.x = (it.centerX + cos(it.angle) * (radius + it.distance)).toFloat()
+                    if (it.y > it.centerY) {
+                        it.y = (sin(it.angle) * (radius + it.distance) + it.centerY).toFloat()
+                    } else {
+                        it.y = (it.centerY - sin(it.angle) * (radius + it.distance)).toFloat()
+                    }
+                    it.distance += speedRandom
                 }
                 invalidate()
             }
         }
     }
 
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
 
+        //  内圆半径
+        radius = (width/4).toFloat()
+        //  内圆中心坐标
+        val centerX = (width / 2).toFloat()
+        val centerY = (height / 2).toFloat()
         //  内圆，粒子起点
-        insideCirclePath.addCircle((width / 2).toFloat(), (height / 2).toFloat(), (width / 4).toFloat(), Path.Direction.CCW)
-        val insidePathMeasure = PathMeasure(insideCirclePath, false)
-        //  外圆，粒子终点
-        outsideCirclePath.addCircle((width / 2).toFloat(), (height / 2).toFloat(), (width / 2).toFloat(), Path.Direction.CCW)
-        val outsidePathMeasure = PathMeasure(outsideCirclePath, false)
+        insideCirclePath.addCircle(centerX, centerY, radius, Path.Direction.CCW)
 
+        //  随机值
         val random = Random()
+
+        val insidePathMeasure = PathMeasure(insideCirclePath, false)
         for (index in 0..pointCount) {
-            val startPos = insidePathMeasure.getPosTan(index)
-            val endPos = outsidePathMeasure.getPosTan(index)
+            //  当前点的坐标
+            val nowPos = insidePathMeasure.getPosTan(index)
+            //  生成随机值, 用来点的随机分布
             val randomX = random.nextInt(5)
             val randomY = random.nextInt(5)
-            startPos[0] += randomX.toFloat()
-            startPos[1] += randomY.toFloat()
-            endPos[0] += randomX.toFloat()
-            endPos[1] += randomY.toFloat()
-            val centerPos = FloatArray(2)
-            centerPos[0] = (width/2).toFloat()
-            centerPos[1] = (height/2).toFloat()
-            val quadrant =  if (startPos[0] < (width / 2).toFloat())
-                if (startPos[1] < (height / 2).toFloat())
-                    1
-                else
-                    2
-            else if (startPos[1] < (height / 2).toFloat())
-                3
-            else
-                4
-            val distanceCTS = abs(
-                    sqrt(
-                            centerPos[0].toDouble().pow(2.0) + centerPos[1].toDouble().pow(2.0)
-                    )      - sqrt(
-                            endPos[0].toDouble().pow(2.0) + endPos[1].toDouble().pow(2.0)
-                    )
-            )
-            val distanceCTE = abs(
-                    sqrt(
-                            centerPos[0].toDouble().pow(2.0) + centerPos[1].toDouble().pow(2.0)
-
-                    )
-                            - sqrt(
-                                    endPos[0].toDouble().pow(2.0) + endPos[1].toDouble().pow(2.0)
-                    )
-            )
-            val pos = startPos.copyOf()
+            //  计算角度
+            val angle = acos(((centerX - nowPos[0]) / radius).toDouble())
+            //  生成随机x, y
+            val x = nowPos[0] + randomX.toFloat()
+            val y = nowPos[1] + randomY.toFloat()
             ppList.add(
                     ParticlePoint(
-                            pos,
-                            centerPos,
-                            distanceCTS,
-                            distanceCTE,
-                            5f,
-                            0,
-                            quadrant
+                            x,
+                            y,
+                            0f,
+                            0,//    是否使用撞壁回弹模式
+                            angle,
+                            radius,
+                            centerX,
+                            centerY
                     ))
         }
 
@@ -114,81 +102,13 @@ class ParticleEffectView @JvmOverloads constructor(
         canvas?.drawParticlePoint()
     }
 
-    private fun calcPos(pos: FloatArray, speed: Float, quadrant: Int, state: Int): FloatArray {
-        when(quadrant) {
-            1 -> {
-                if (state == 0) {
-                    pos[0] -= speed
-                    pos[1] -= speed
-                } else {
-                    pos[0] += speed
-                    pos[1] += speed
-                }
-                Log.e("-", "${pos[0]} - ${pos[1]}")
-
-            }
-
-            2 -> {
-                if (state == 0) {
-                    pos[0] -= speed
-                    pos[1] += speed
-                } else {
-                    pos[0] -= speed
-                    pos[1] += speed
-                }
-            }
-
-            3 -> {
-                if (state == 0) {
-                    pos[0] += speed
-                    pos[1] -= speed
-                } else {
-                    pos[0] -= speed
-                    pos[1] += speed
-                }
-            }
-
-            4 -> {
-                if (state == 0) {
-                    pos[0] += speed
-                    pos[1] += speed
-                } else {
-                    pos[0] -= speed
-                    pos[1] -= speed
-                }
-            }
-        }
-        return pos
-    }
-
-    private fun checkState(pos: FloatArray, centerPos: FloatArray,minDistance: Double,  maxDistance: Double): Int {
-        val distance = abs(
-                        sqrt(
-                                pos[0].toDouble().pow(2.0) + pos[1].toDouble().pow(2.0)
-                        ) - sqrt(
-                                centerPos[0].toDouble().pow(2.0) + centerPos[1].toDouble().pow(2.0)
-                        )
-        )
-        var result =  if (distance > maxDistance)
-            1
-        else
-            0
-
-        return result
-    }
-
-
     private fun Canvas.drawParticlePoint() {
-
-        val outsideCircle: Paint = Paint()
-        outsideCircle.color = Color.RED
-        drawPath(outsideCirclePath, outsideCircle)
-        val insideCircle: Paint = Paint()
-        outsideCircle.color = Color.GREEN
-        drawPath(insideCirclePath, insideCircle)
+//        val insideCircle: Paint = Paint()
+//        insideCircle.color = Color.GRAY
+//        drawPath(insideCirclePath, insideCircle)
 
         ppList.forEach {
-            drawPoint(it.pos[0], it.pos[1], pointPaint)
+            drawPoint(it.x, it.y, pointPaint)
         }
         if (!anim.isRunning) {
             anim.start()
