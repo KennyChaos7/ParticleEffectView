@@ -35,10 +35,11 @@ class ParticleEffectView @JvmOverloads constructor(
                 ppList.forEach {
                     val speedRandom = Random().nextInt(15).toFloat()
                     //  是否需要反向移动
-                    //  TODO 使用撞壁回弹模式 it.state
+                    //  TODO 使用撞壁回弹模式 it.reverse
                     if (it.distance > it.maxDistance)
                     {
                         it.distance = 0f
+                        it.reverse = !it.reverse
                     }
                     //  核心算法来自https://mp.weixin.qq.com/s/p2nGt1g1doT1O8NwRqRW_Q
                     //  原算法需要分成四个象限来分别处理,过于繁琐
@@ -60,10 +61,10 @@ class ParticleEffectView @JvmOverloads constructor(
         super.onSizeChanged(w, h, oldw, oldh)
 
         //  内圆半径
-        radius = (width/4).toFloat()
+        radius = (w/4).toFloat()
         //  内圆中心坐标
-        val centerX = (width / 2).toFloat()
-        val centerY = (height / 2).toFloat()
+        val centerX = (w / 2).toFloat()
+        val centerY = (h / 2).toFloat()
         //  内圆，粒子起点
         insideCirclePath.addCircle(centerX, centerY, radius, Path.Direction.CCW)
 
@@ -87,7 +88,7 @@ class ParticleEffectView @JvmOverloads constructor(
                             x,
                             y,
                             0f,
-                            0,//    是否使用撞壁回弹模式
+                            false,//    撞壁回弹模式使用
                             angle,
                             radius,
                             centerX,

@@ -4,7 +4,7 @@ data class ParticlePoint(
         var x: Float,
         var y: Float,
         var distance: Float,
-        var state: Int,
+        var reverse: Boolean,
         val angle: Double,
         val maxDistance: Float,
         val centerX: Float,
