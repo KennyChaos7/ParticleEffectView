@@ -16,7 +16,7 @@ class ParticleEffectView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
     private var radius: Float = 0f
-    private val pointCount = 200
+    private val pointCount = 500
     private var pointPaint: Paint = Paint()
     private val ppList: MutableList<ParticlePoint> = mutableListOf()
     private var anim: ValueAnimator
@@ -27,7 +27,7 @@ class ParticleEffectView @JvmOverloads constructor(
         pointPaint.strokeWidth = 2f
 
         anim = ValueAnimator.ofFloat(0f, 1f)
-        anim.duration = 10000
+        anim.duration = 5000
         anim.repeatCount = -1
         anim.interpolator = LinearInterpolator()
         anim.addUpdateListener { va ->
@@ -48,6 +48,7 @@ class ParticleEffectView @JvmOverloads constructor(
                     } else {
                         it.y = (it.centerY - sin(it.angle) * (radius + it.distance)).toFloat()
                     }
+                    it.alpha = ((1f - it.distance / it.maxDistance)  * 225f).toInt()
                     it.distance += speedRandom
                 }
                 invalidate()
@@ -88,6 +89,7 @@ class ParticleEffectView @JvmOverloads constructor(
                             y,
                             0f,
                             0,//    是否使用撞壁回弹模式
+                            1,
                             angle,
                             radius,
                             centerX,
@@ -108,6 +110,7 @@ class ParticleEffectView @JvmOverloads constructor(
 //        drawPath(insideCirclePath, insideCircle)
 
         ppList.forEach {
+            pointPaint.alpha = it.alpha
             drawPoint(it.x, it.y, pointPaint)
         }
         if (!anim.isRunning) {
