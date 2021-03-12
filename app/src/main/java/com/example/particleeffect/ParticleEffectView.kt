@@ -49,6 +49,7 @@ class ParticleEffectView @JvmOverloads constructor(
                     } else {
                         it.y = (it.centerY - sin(it.angle) * (radius + it.distance)).toFloat()
                     }
+                    it.alpha = ((1f - it.distance / it.maxDistance)  * 225f).toInt()
                     it.distance += speedRandom
                 }
                 invalidate()
@@ -89,6 +90,7 @@ class ParticleEffectView @JvmOverloads constructor(
                             y,
                             0f,
                             false,//    撞壁回弹模式使用
+                            1,
                             angle,
                             radius,
                             centerX,
